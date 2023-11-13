@@ -1,6 +1,63 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 8046:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Env = void 0;
+const fs = __importStar(__nccwpck_require__(7147));
+class Env {
+    data = [];
+    add(key, value) {
+        this.data.push({ key, value });
+    }
+    addMany(secrets) {
+        this.data.push(...secrets);
+    }
+    toString() {
+        return this.data
+            .map((item) => {
+            if (item.value.includes('\n'))
+                return `${item.key}="${item.value.replace(/\r?\n/g, '\\n')}"`;
+            return `${item.key}=${item.value}`;
+        })
+            .join('\n');
+    }
+    save(filePath) {
+        fs.writeFileSync(filePath, this.toString());
+    }
+}
+exports.Env = Env;
+//# sourceMappingURL=env.js.map
+
+/***/ }),
+
 /***/ 4016:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -29,50 +86,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const infisical_node_1 = __importDefault(__nccwpck_require__(2298));
 const core = __importStar(__nccwpck_require__(7733));
-const fs = __importStar(__nccwpck_require__(7147));
 const path = __importStar(__nccwpck_require__(1017));
+const env_1 = __nccwpck_require__(8046);
+const github_1 = __nccwpck_require__(4965);
+const infisical_1 = __nccwpck_require__(5605);
 async function main(input) {
     const { directory, token, environment } = input;
-    let outFile = '';
-    const infisicalClient = new infisical_node_1.default({ token });
-    const infisical = await infisicalClient.getAllSecrets({ environment, path: '/', attachToProcessEnv: false, includeImports: true });
-    infisical.forEach((secret) => {
-        if (secret.secretValue.includes('\n'))
-            outFile += `${secret.secretName}="${secret.secretValue.replace(/\r?\n/g, '\\n')}"\n`;
-        else
-            outFile += `${secret.secretName}=${secret.secretValue}\n`;
-    });
-    for (const key of Object.keys(process.env)) {
-        if (!key.startsWith('INPUT_ENVKEY_'))
-            continue;
-        const name = key.split('INPUT_ENVKEY_')[1];
-        const value = process.env[key] || '';
-        if (value === '')
-            throw new Error(`Empty env key found: ${key}`);
-        if (value.includes('\n'))
-            outFile += `${name}="${value.replace(/\r?\n/g, '\\n')}"\n`;
-        else
-            outFile += `${name}=${value}\n`;
-    }
-    let filePath = process.env['GITHUB_WORKSPACE'] || '.';
-    if (filePath === '' || filePath === 'None')
-        filePath = '.';
-    if (directory === '')
-        filePath = path.join(filePath, '.env');
-    else if (directory.startsWith('/'))
-        throw new Error('Absolute paths are not allowed. Please use a relative path.');
-    else if (directory.startsWith('./'))
-        filePath = path.join(filePath, directory.slice(2), '.env');
-    else
-        filePath = path.join(filePath, directory, '.env');
-    core.debug(`Creating file: ${filePath}`);
-    fs.writeFileSync(filePath, outFile);
+    const env = new env_1.Env();
+    env.addMany([...(await (0, github_1.getSecretsFromGitHub)()), ...(await (0, infisical_1.getSecretsFromInfisical)(token, environment))]);
+    env.save(path.join(process.env['GITHUB_WORKSPACE'] === 'None' ? '.' : process.env['GITHUB_WORKSPACE'] || '.', directory, '.env'));
 }
 main({
     directory: core.getInput('directory'),
@@ -82,6 +106,48 @@ main({
     .then(() => core.info('Successfully created file'))
     .catch((error) => core.setFailed(error.message));
 //# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 4965:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getSecretsFromGitHub = void 0;
+async function getSecretsFromGitHub() {
+    return Object.keys(process.env)
+        .map((key) => {
+        if (!key.startsWith('INPUT_ENVKEY_'))
+            return;
+        return { key: key.split('INPUT_ENVKEY_')[1], value: process.env[key] };
+    })
+        .filter((secret) => !!secret);
+}
+exports.getSecretsFromGitHub = getSecretsFromGitHub;
+//# sourceMappingURL=github.js.map
+
+/***/ }),
+
+/***/ 5605:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getSecretsFromInfisical = void 0;
+const infisical_node_1 = __importDefault(__nccwpck_require__(2298));
+async function getSecretsFromInfisical(token, environment) {
+    const client = new infisical_node_1.default({ token });
+    const secrets = await client.getAllSecrets({ environment, path: '/', attachToProcessEnv: false, includeImports: true });
+    return secrets.map((secret) => ({ key: secret.secretName, value: secret.secretValue }));
+}
+exports.getSecretsFromInfisical = getSecretsFromInfisical;
+//# sourceMappingURL=infisical.js.map
 
 /***/ }),
 
@@ -5375,7 +5441,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.decryptSymmetric128BitHexKeyUTF8 = exports.encryptSymmetric128BitHexKeyUTF8 = exports.decryptSymmetric = exports.encryptSymmetric = exports.createSymmetricKey = exports.decryptAsymmetric = exports.encryptAsymmetric = void 0;
 var crypto = __importStar(__nccwpck_require__(6113));
-var nacl = __importStar(__nccwpck_require__(4258));
+var nacl = __importStar(__nccwpck_require__(2480));
 var util = __importStar(__nccwpck_require__(5740));
 var variables_1 = __nccwpck_require__(3258);
 /**
@@ -6243,7 +6309,7 @@ exports.debug = debug; // for test
 
 /***/ }),
 
-/***/ 4258:
+/***/ 2480:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 (function(nacl) {
@@ -13955,7 +14021,7 @@ module.exports = {
 
 
 const { parseSetCookie } = __nccwpck_require__(1086)
-const { stringify, getHeadersList } = __nccwpck_require__(2870)
+const { stringify, getHeadersList } = __nccwpck_require__(4258)
 const { webidl } = __nccwpck_require__(395)
 const { Headers } = __nccwpck_require__(7590)
 
@@ -14147,7 +14213,7 @@ module.exports = {
 
 
 const { maxNameValuePairSize, maxAttributeValueSize } = __nccwpck_require__(6778)
-const { isCTLExcludingHtab } = __nccwpck_require__(2870)
+const { isCTLExcludingHtab } = __nccwpck_require__(4258)
 const { collectASequenceOfCodePointsFast } = __nccwpck_require__(2765)
 const assert = __nccwpck_require__(9491)
 
@@ -14465,7 +14531,7 @@ module.exports = {
 
 /***/ }),
 
-/***/ 2870:
+/***/ 4258:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
