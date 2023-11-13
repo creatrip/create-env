@@ -1,24 +1,21 @@
-name: "Create .env file"
-description: "GitHub Action to create a .env file with GitHub Secrets & Infisical"
-author: "Creatrip"
+name: 'Create .env file'
+description: 'GitHub Action to create a .env file with GitHub Secrets & Infisical'
+author: 'Creatrip'
 branding:
-  icon: "briefcase"
-  color: "gray-dark"
+  icon: 'briefcase'
+  color: 'gray-dark'
 
 inputs:
-  file_name:
-    description: "The filename for the envfile"
-    default: ".env"
   directory:
-    description: "The directory to put the envfile in"
-    default: ""
-  infisical_token:
-    description: "The infisical token to use"
+    description: 'The directory to put the envfile in'
+    default: ''
+  token:
+    description: 'The infisical token to use'
     required: true
-  infisical_env:
-    description: "The infisical env to use"
+  env:
+    description: 'The infisical env to use'
     required: true
 
 runs:
-  using: "node16"
-  main: "build/index.js"
+  using: 'node16'
+  main: 'build/index.js'

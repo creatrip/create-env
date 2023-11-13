@@ -37,51 +37,41 @@ const infisical_node_1 = __importDefault(__nccwpck_require__(2298));
 const core = __importStar(__nccwpck_require__(7733));
 const fs = __importStar(__nccwpck_require__(7147));
 const path = __importStar(__nccwpck_require__(1017));
-async function main(input) {
-    const { fileName, directory, infisicalToken, infisicalEnv } = input;
-    let outFile = '';
-    const infisicalClient = new infisical_node_1.default({ token: infisicalToken });
-    const infisical = await infisicalClient.getAllSecrets({ environment: infisicalEnv, path: '/', attachToProcessEnv: false, includeImports: true });
-    infisical.forEach((secret) => {
-        if (secret.secretValue.includes('\n'))
-            outFile += `${secret.secretName}="${secret.secretValue.replace(/\r?\n/g, '\\n')}"\n`;
-        else
-            outFile += `${secret.secretName}=${secret.secretValue}\n`;
-    });
-    for (const key of Object.keys(process.env)) {
-        if (!key.startsWith('INPUT_ENVKEY_'))
-            continue;
-        const name = key.split('INPUT_ENVKEY_')[1];
-        const value = process.env[key] || '';
-        if (value === '')
-            throw new Error(`Empty env key found: ${key}`);
-        if (value.includes('\n'))
-            outFile += `${name}="${value.replace(/\r?\n/g, '\\n')}"\n`;
-        else
-            outFile += `${name}=${value}\n`;
-    }
-    let filePath = process.env['GITHUB_WORKSPACE'] || '.';
-    if (filePath === '' || filePath === 'None')
-        filePath = '.';
-    if (directory === '')
-        filePath = path.join(filePath, fileName);
-    else if (directory.startsWith('/'))
-        throw new Error('Absolute paths are not allowed. Please use a relative path.');
-    else if (directory.startsWith('./'))
-        filePath = path.join(filePath, directory.slice(2), fileName);
-    else
-        filePath = path.join(filePath, directory, fileName);
-    core.debug(`Creating file: ${filePath}`);
-    fs.writeFileSync(filePath, outFile);
-}
 main({
-    fileName: core.getInput('file_name'),
     directory: core.getInput('directory'),
-    infisicalToken: core.getInput('infisical_token'),
-    infisicalEnv: core.getInput('infisical_env'),
+    token: core.getInput('token'),
+    environment: core.getInput('env'),
 })
     .then(() => core.info('Successfully created file'))
     .catch((error) => core.setFailed(error.message));
+async function main(input) {
+    const { directory, token, environment } = input;
+    const env = new Env();
+    const infisical = new infisical_node_1.default({ token });
+    const secrets = await infisical.getAllSecrets({ environment, path: '/', attachToProcessEnv: false, includeImports: true });
+    secrets.map((secret) => env.add(secret.secretName, secret.secretValue));
+    Object.keys(process.env).map((key) => {
+        if (!key.startsWith('INPUT_ENVKEY_'))
+            return;
+        env.add(key.split('INPUT_ENVKEY_')[1], process.env[key]);
+    });
+    env.save(path.join(process.env['GITHUB_WORKSPACE'] || '.', directory, '.env'));
+}
+class Env {
+    data = [];
+    add(name, value) {
+        this.data.push({ name, value });
+    }
+    save(path) {
+        fs.writeFileSync(path, this.data
+            .map((secret) => {
+            if (secret.value.includes('\n'))
+                return `${secret.name}="${secret.value.replace(/\r?\n/g, '\\n')}"`;
+            return `${secret.name}=${secret.value}`;
+        })
+            .join('\n'));
+    }
+}
 //# sourceMappingURL=index.js.map
 
 /***/ }),
