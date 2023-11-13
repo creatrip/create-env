@@ -3,37 +3,43 @@ import * as core from '@actions/core';
 import * as fs from 'fs';
 import * as path from 'path';
 
-class Env {
-  private data: { name: string; value: string }[] = [];
-
-  add(name: string, value: string): void {
-    this.data.push({ name, value });
-  }
-
-  save(path: string): void {
-    fs.writeFileSync(
-      path,
-      this.data
-        .map((secret) => {
-          if (secret.value.includes('\n')) return `${secret.name}="${secret.value.replace(/\r?\n/g, '\\n')}"`;
-          return `${secret.name}=${secret.value}`;
-        })
-        .join('\n'),
-    );
-  }
+interface Input {
+  directory: string;
+  token: string;
+  environment: string;
 }
 
-async function main(input: { directory: string; token: string; environment: string }): Promise<void> {
+async function main(input: Input): Promise<void> {
   const { directory, token, environment } = input;
-  const env = new Env();
-  const infisical = new InfisicalClient({ token });
-  const secrets = await infisical.getAllSecrets({ environment, path: '/', attachToProcessEnv: false, includeImports: true });
-  secrets.map((secret) => env.add(secret.secretName, secret.secretValue));
-  Object.keys(process.env).map((key) => {
-    if (!key.startsWith('INPUT_ENVKEY_')) return;
-    env.add(key.split('INPUT_ENVKEY_')[1], process.env[key]);
+
+  let outFile: string = '';
+
+  const infisicalClient = new InfisicalClient({ token });
+  const infisical = await infisicalClient.getAllSecrets({ environment, path: '/', attachToProcessEnv: false, includeImports: true });
+  infisical.forEach((secret) => {
+    if (secret.secretValue.includes('\n')) outFile += `${secret.secretName}="${secret.secretValue.replace(/\r?\n/g, '\\n')}"\n`;
+    else outFile += `${secret.secretName}=${secret.secretValue}\n`;
   });
-  env.save(path.join(process.env['GITHUB_WORKSPACE'] || '.', directory, '.env'));
+
+  for (const key of Object.keys(process.env)) {
+    if (!key.startsWith('INPUT_ENVKEY_')) continue;
+    const name = key.split('INPUT_ENVKEY_')[1];
+    const value = process.env[key] || '';
+    if (value === '') throw new Error(`Empty env key found: ${key}`);
+    if (value.includes('\n')) outFile += `${name}="${value.replace(/\r?\n/g, '\\n')}"\n`;
+    else outFile += `${name}=${value}\n`;
+  }
+
+  let filePath = process.env['GITHUB_WORKSPACE'] || '.';
+  if (filePath === '' || filePath === 'None') filePath = '.';
+  if (directory === '') filePath = path.join(filePath, '.env');
+  else if (directory.startsWith('/')) throw new Error('Absolute paths are not allowed. Please use a relative path.');
+  else if (directory.startsWith('./')) filePath = path.join(filePath, directory.slice(2), '.env');
+  else filePath = path.join(filePath, directory, '.env');
+
+  core.debug(`Creating file: ${filePath}`);
+
+  fs.writeFileSync(filePath, outFile);
 }
 
 main({

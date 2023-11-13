@@ -6,6 +6,9 @@ branding:
   color: 'gray-dark'
 
 inputs:
+  file_name:
+    description: 'The filename for the envfile'
+    default: '.env'
   directory:
     description: 'The directory to put the envfile in'
     default: ''
