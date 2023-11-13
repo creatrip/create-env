@@ -39,7 +39,7 @@ async function main(input: { directory: string; token: string; environment: stri
 main({
   directory: core.getInput('directory'),
   token: core.getInput('token'),
-  environment: core.getInput('env'),
+  environment: core.getInput('environment'),
 })
   .then(() => core.info('Successfully created file'))
   .catch((error) => core.setFailed(error.message));

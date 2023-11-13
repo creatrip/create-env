@@ -12,8 +12,8 @@ inputs:
   token:
     description: 'The infisical token to use'
     required: true
-  env:
-    description: 'The infisical env to use'
+  environment:
+    description: 'The infisical environment to use'
     required: true
 
 runs:
