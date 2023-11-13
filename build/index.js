@@ -41,13 +41,13 @@ class Env {
         this.data.push(...secrets);
     }
     toString() {
-        return this.data
+        return (this.data
             .map((item) => {
             if (item.value.includes('\n'))
                 return `${item.key}="${item.value.replace(/\r?\n/g, '\\n')}"`;
             return `${item.key}=${item.value}`;
         })
-            .join('\n');
+            .join('\n') + '\n');
     }
     save(filePath) {
         fs.writeFileSync(filePath, this.toString());

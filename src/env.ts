@@ -12,12 +12,14 @@ export class Env {
   }
 
   toString(): string {
-    return this.data
-      .map((item) => {
-        if (item.value.includes('\n')) return `${item.key}="${item.value.replace(/\r?\n/g, '\\n')}"`;
-        return `${item.key}=${item.value}`;
-      })
-      .join('\n');
+    return (
+      this.data
+        .map((item) => {
+          if (item.value.includes('\n')) return `${item.key}="${item.value.replace(/\r?\n/g, '\\n')}"`;
+          return `${item.key}=${item.value}`;
+        })
+        .join('\n') + '\n'
+    );
   }
 
   save(filePath: string): void {
