@@ -1,22 +1,22 @@
 import * as fs from 'fs';
 
 export class Env {
-  private readonly data: { key: string; value: string }[] = [];
+  private readonly data: Map<string, string> = new Map();
 
   add(key: string, value: string): void {
-    this.data.push({ key, value });
+    this.data.set(key, value);
   }
 
   addMany(secrets: { key: string; value: string }[]): void {
-    this.data.push(...secrets);
+    secrets.forEach((secret) => this.add(secret.key, secret.value));
   }
 
   toString(): string {
     return (
-      this.data
-        .map((item) => {
-          if (item.value.includes('\n')) return `${item.key}="${item.value.replace(/\r?\n/g, '\\n')}"`;
-          return `${item.key}=${item.value}`;
+      Array.from(this.data.entries())
+        .map(([key, value]) => {
+          if (value.includes('\n')) return `${key}="${value.replace(/\r?\n/g, '\\n')}"`;
+          return `${key}=${value}`;
         })
         .join('\n') + '\n'
     );
