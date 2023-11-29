@@ -7,7 +7,7 @@ import { getSecretsFromInfisical } from './secrets/infisical';
 async function main(input: { directory: string; token: string; environment: string }): Promise<void> {
   const { directory, token, environment } = input;
   const env: Env = new Env();
-  env.addMany([...(await getSecretsFromGitHub()), ...(await getSecretsFromInfisical(token, environment))]);
+  env.addMany([...(await getSecretsFromInfisical(token, environment)), ...(await getSecretsFromGitHub())]);
   env.save(path.join(process.env['GITHUB_WORKSPACE'] === 'None' ? '.' : process.env['GITHUB_WORKSPACE'] || '.', directory, '.env'));
 }
 
